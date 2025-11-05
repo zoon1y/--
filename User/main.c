@@ -4,41 +4,54 @@
 #include "Motor.h"
 #include "Key.h"
 #include "Encoder.h"
+#include "Serial.h"
+#include "Timer.h"
+#include "PID.h"
 
 uint8_t KeyNum;
-int8_t Speed; 
+int16_t Speed;
+int16_t EncoderCnt;
+int16_t TargetSpeed = 0;  // 目标速度
+int16_t ActualSpeed;      // 实际速度
+PID_t SpeedPID;           // 速度环PID结构体
+
 
 int main(void)
 {
 	OLED_Init();
-	Motor_Init();
-	Key_Init();
+    Motor_Init();
+    Key_Init();
+    Encoder_Init();  // 初始化编码器
+    Serial_Init();   // 初始化串口
+    TIM2_Init();    // 初始化定时器2（10ms中断）
+    TIM3_Init();
 	
-	OLED_ShowString(1, 1, "Speed:");
-	
-	while (1)
-	{
-		KeyNum = Key_GetNum();
-		if (KeyNum == 1)
-		{
-			Speed += 20;
-			if (Speed > 100)
-			{
-				Speed = -100;
-			}
-		}
-		Motor_SetSpeed1(Speed);
-		OLED_ShowSignedNum(1, 7, Speed, 3);
-	}
+    while (1)
+    {
+        KeyNum = Key_GetNum();
+        if (KeyNum == 1)
+        {
+            Speed += 20;
+            if (Speed > 100)
+            {
+                Speed = -100;
+            }
+        }
+        Motor_SetSpeed1(Speed);
+    }
 }
 
+// 定时器2中断服务函数，每10ms执行一次
 void TIM2_IRQHandler(void)
 {
-	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)		//判断是否是TIM2的更新事件触发的中断
-	{
-		Speed = Encoder_Get_TIM3();						    //每隔固定时间段读取一次编码器计数增量值，即为速度值
-		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);			//清除TIM2更新事件的中断标志位
-															//中断标志位必须清除
-															//否则中断将连续不断地触发，导致主程序卡死
-	}
+    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
+    {
+        // 读取TIM3编码器的计数
+        EncoderCnt = Encoder_Get_TIM3();
+        
+        // 通过串口发送编码器数值到上位机
+        Serial_Printf("Encoder Count: %d\r\n", EncoderCnt);
+        
+        TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
+    }
 }

@@ -33,3 +33,7 @@
 .\objects\main.o: .\Hardware\Motor.h
 .\objects\main.o: .\Hardware\Key.h
 .\objects\main.o: .\Hardware\Encoder.h
+.\objects\main.o: .\Hardware\Serial.h
+.\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\main.o: .\System\Timer.h
+.\objects\main.o: .\Hardware\PID.h
