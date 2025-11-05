@@ -27,7 +27,7 @@ int main(void)
 				Speed = -100;
 			}
 		}
-		Motor_SetSpeed(Speed);
+		Motor_SetSpeed1(Speed);
 		OLED_ShowSignedNum(1, 7, Speed, 3);
 	}
 }
