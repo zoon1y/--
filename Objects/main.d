@@ -32,3 +32,4 @@
 .\objects\main.o: .\Hardware\OLED.h
 .\objects\main.o: .\Hardware\Motor.h
 .\objects\main.o: .\Hardware\Key.h
+.\objects\main.o: .\Hardware\Encoder.h
