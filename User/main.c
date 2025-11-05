@@ -30,3 +30,14 @@ int main(void)
 		OLED_ShowSignedNum(1, 7, Speed, 3);
 	}
 }
+
+void TIM2_IRQHandler(void)
+{
+	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)		//判断是否是TIM2的更新事件触发的中断
+	{
+		Speed = Encoder_Get();								//每隔固定时间段读取一次编码器计数增量值，即为速度值
+		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);			//清除TIM2更新事件的中断标志位
+															//中断标志位必须清除
+															//否则中断将连续不断地触发，导致主程序卡死
+	}
+}
