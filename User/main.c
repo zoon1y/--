@@ -1,140 +1,178 @@
 #include "stm32f10x.h"                  // Device header
 #include "Delay.h"
-#include "OLED.h"
-#include "Motor.h"
+#include "LED.h"
 #include "Key.h"
+#include "OLED.h"
 #include "Encoder.h"
-#include "Serial.h"
 #include "Timer.h"
-#include "PID.h"
+#include "PWM.h"
+#include "Motor.h"
+#include "IC.h"
+#include "EI.h"
+#include "Serial.h"
 #include <string.h>
-#include <stdlib.h>
 
-#define MODE_POSITION_FOLLOW 0  // 位置跟随模式
-#define MODE_SPEED_CONTROL 1    // 速度闭环控制模式
 
-uint8_t KeyNum;
+extern  uint16_t Time_Serial;
 
-float Target = 0;          // 目标速度
-float Actual, Out;
-float Kp = 1.2f, Ki = 0.05f, Kd = 0.3f;  // 速度环PID参数（优化后）
-float Error0, Error1, Error2;
+float Target = 0,Actual = 0,Out = 0;
+float Kp = 0.5,Ki = 0.04,Kd = 0;
+float Error0 = 0,Error1 = 0,Error2 = 0;
+uint8_t Actual_mode = 0;
+uint8_t mode =0,Flag_change = 0;
 
-char Serial_RxBuffer[20];  // 串口接收缓冲区
-uint8_t Serial_RxIndex = 0;  // 接收索引
-uint8_t Serial_RxComplete = 0;  // 接收完成标志
+int main ()
+{	
+	OLED_Init();
+	LED_Init();
+	Timer_Init();
+	Key_Init();
+	Serial_Init();
+	EI_Init();
+	Motor_Init();
+	
+	
+	while(1)
+	{	
+		
+		if ( Key_GetNum() == 1){
+			mode = (mode + 1) % 2;
+			Motor_SetSpeed(M1,0);
+			Motor_SetSpeed(M2,0);
+			Actual_mode = 0;
+			Target = 0;
+			Actual = 0;
+			Flag_change = 1;
+			
+		}
+		if(mode == 0){
+			if(Serial_RxFlag == 1){
+				Target = 0;
+				if(Serial_RxPacket[0] == '-'){
+					for(int i = 1;Serial_RxPacket[i] != '%';i++){
+						Target = Target * 10 + (Serial_RxPacket[i] - '0');
+					}
+					//if(Target >= 100){Target = 100;}
+					Target = -Target;
+				} else{  
+					for(int i = 0;Serial_RxPacket[i] != '%';i++){
+						Target = Target * 10 + (Serial_RxPacket[i] - '0');
+					}
+					//if(Target >= 100){Target = 100;}
+				}
+				
+				Serial_RxFlag = 0;
+				
+			}
+		} else if(mode == 1){
+			Target += (EI_GetTim3() / 3);
+			
+		}
+		
+		
+		switch(mode){
+			case 0:
+				OLED_Clear();
+				OLED_ShowString(0,0,"mission1",OLED_8X16);
+				OLED_Printf(0,16,OLED_8X16,"Target=%+05.0f",Target);
+				OLED_Printf(0,32,OLED_8X16,"Actual=%+05.0f",Actual);
+				OLED_Printf(0,48,OLED_8X16,"Out=%+05.0f",Out);
+				
+				break;
+			case 1:
+				OLED_Clear();
+				OLED_ShowString(0,0,"mission2",OLED_8X16);
+				OLED_Printf(0,16,OLED_8X16,"Position1=%+05.0f",Target);
+				OLED_Printf(0,32,OLED_8X16,"Position2=%+05.0f",Actual);
+				break;
+			
+		}
+		
+		
+		
+		
+		
+		if(Target == 0 && mode == 0){
+			if(Actual_mode == 1){
+				Actual_mode = 0;
+				Actual = 0;
+			}
+			Actual += (EI_GetTim3() / 3);//相当于单位为占空比
+		} else if(Target != 0 && mode == 0){
+			if(Actual_mode == 0){
+				Actual_mode = 1;
+				Actual = 0;
+			}
+			Actual = (EI_GetTim3() / 3);
+		} else if(mode == 1){
+			Actual += (EI_GetTim4() / 3);
+			
+		}
+		
+		OLED_Update();
 
-void Serial_ProcessCommand(void)
-{
-    if (Serial_RxComplete)
-    {
-        // 指令格式：@speed%123 或 @speed%-45
-        if (strstr(Serial_RxBuffer, "@speed%") == Serial_RxBuffer)
-        {
-            char* numStr = Serial_RxBuffer + 6;  // 指向数字部分
-            int32_t speed = atoi(numStr);
-            
-            // 限制速度范围（根据电机性能调整）
-            if (speed > 300) speed = 300;
-            if (speed < -300) speed = -300;
-            
-            Target = speed;  // 更新目标速度
-            Serial_Printf("Set target speed: %d\r\n", (int)Target);
-        }
-        
-        // 清空缓冲区和标志
-        memset(Serial_RxBuffer, 0, sizeof(Serial_RxBuffer));
-        Serial_RxIndex = 0;
-        Serial_RxComplete = 0;
-    }
+		
+		if(Time_Serial >= 10){
+			Time_Serial = 0 ;
+			if(Actual && mode == 0){
+				printf("%.2f\n",Actual);//???
+			}
+			if(mode == 1){
+				printf("%.2f,%.2f\n",Actual,Target);
+			}
+		}
+		
+	}
+	
 }
 
-int main(void)
+void TIM2_IRQHandler(void)
 {
-	OLED_Init();
-    Motor_Init();
-    Key_Init();
-    Encoder_Init();  // 初始化编码器
-    Serial_Init();   // 初始化串口
-    TIM2_Init();    // 初始化定时器2（10ms中断）
-	
-    while (1)
-    {	
-//		Mode_Switch();
-//        Serial_ParseCommand();
-//        OLED_UpdateDisplay();
-//		Serial_ProcessCommand();
+	static uint16_t Count;
+	if(TIM_GetITStatus(TIM2,TIM_IT_Update)==SET){
+		Serial_Tick();
 		
-//		Kp = RP_GetValue(1) / 4095.0 * 2;
-//		Ki = RP_GetValue(2) / 4095.0 * 2;
-//		Kd = RP_GetValue(3) / 4095.0 * 2;
-//		Target = RP_GetValue(4) / 4095.0 * 300 - 150;
 		
-//		OLED_Printf(0, 16, OLED_8X16, "Kp:%4.2f", Kp);
-//		OLED_Printf(0, 32, OLED_8X16, "Ki:%4.2f", Ki);
-//		OLED_Printf(0, 48, OLED_8X16, "Kd:%4.2f", Kd);
-//		
-//		OLED_Printf(64, 16, OLED_8X16, "Tar:%+04.0f", Target);
-//		OLED_Printf(64, 32, OLED_8X16, "Act:%+04.0f", Actual);
-//		OLED_Printf(64, 48, OLED_8X16, "Out:%+04.0f", Out);
-//		
-//		OLED_Update();
-//		
-//		Serial_Printf("%f,%f,%f\r\n", Target, Actual, Out);
-		Motor_SetSpeed1(20);
+		
+		Key_Tick();
+		Count ++;
+		if(Count >= 20){
+			Count = 0;
+			
+			if(Flag_change == 1){
+				Motor_SetSpeed(M1,0);
+				Motor_SetSpeed(M2,0);
+				Actual_mode = 0;
+				Target = 0;
+				Actual = 0;
+				Flag_change = 0;
+			}
+			
+			Error2 = Error1;
+			Error1 = Error0;
+			Error0 = Target - Actual;
+			if(Error0 >= -3 && Error0 <= 3 && Actual_mode == 0){
+				Out = 0;
+			} else {
+				Out += Kp * (Error0 - Error1) + Ki * Error0 + Kd * (Error0 - 2 * Error1 + Error2);
+			}
+			
+			
+			if(Out >= 100){Out = 100;}
+			if(Out <= -100){Out = -100;}
+			
+			if(mode == 0){
+				Motor_SetSpeed(M1,Out);
+			} 
+			if(mode == 1){
+				Motor_SetSpeed(M2,Out);
+			} 
+				
+		
+			
+		}
+		
+		TIM_ClearITPendingBit(TIM2,TIM_IT_Update);
 	}
 }
 
-// 定时器2中断服务函数，每10ms执行一次
-//void TIM2_IRQHandler(void)
-//{
-//    if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
-//    {
-//		
-//		static uint16_t Count;
-//	
-////		Key_Tick();
-//			
-//		Count ++;
-//		if (Count >= 20)
-//		{
-//			Count = 0;
-//				
-//			Actual = Encoder_Get_TIM3();
-//				
-//			Error2 = Error1;
-//			Error1 = Error0;
-//			Error0 = Target - Actual;
-//				
-//			Out += Kp * (Error0 - Error1) + Ki * Error0
-//					+ Kd * (Error0 - 2 * Error1 + Error2);
-//				
-//			if (Out > 100) {Out = 100;}
-//			if (Out < -100) {Out = -100;}
-//				
-//			Motor_SetSpeed1((int8_t)Out);
-//		}
-//			
-//		TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-//    }
-//}
-
-//void USART1_IRQHandler(void)
-//{
-//    if (USART_GetITStatus(USART1, USART_IT_RXNE) == SET)
-//    {
-//        uint8_t data = USART_ReceiveData(USART1);
-//        
-//        // 接收逻辑：遇到换行符视为指令结束
-//        if (data == '\r' || data == '\n')
-//        {
-//            Serial_RxComplete = 1;
-//        }
-//        else if (Serial_RxIndex < sizeof(Serial_RxBuffer) - 1)
-//        {
-//            Serial_RxBuffer[Serial_RxIndex++] = data;
-//        }
-//        
-//        USART_ClearITPendingBit(USART1, USART_IT_RXNE);
-//    }
-//}

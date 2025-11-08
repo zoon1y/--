@@ -31,3 +31,4 @@
 .\objects\serial.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 .\objects\serial.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdarg.h
 .\objects\serial.o: Hardware\OLED.h
+.\objects\serial.o: Hardware\OLED_Data.h

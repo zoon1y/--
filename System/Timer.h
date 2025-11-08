@@ -1,7 +1,7 @@
 #ifndef __TIMER_H
 #define __TIMER_H
 
-void TIM2_Init(void);
-void TIM3_Init(void);
+void Timer_Init(void);
+uint16_t Timer_GetCounter(void);
 
 #endif

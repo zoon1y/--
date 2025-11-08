@@ -696,21 +696,6 @@
               <FilePath>.\Hardware\Key.h</FilePath>
             </File>
             <File>
-              <FileName>OLED.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\OLED.c</FilePath>
-            </File>
-            <File>
-              <FileName>OLED.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED.h</FilePath>
-            </File>
-            <File>
-              <FileName>OLED_Font.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\OLED_Font.h</FilePath>
-            </File>
-            <File>
               <FileName>PWM.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\PWM.c</FilePath>
@@ -759,6 +744,31 @@
               <FileName>Encoder.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\Encoder.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\OLED.c</FilePath>
+            </File>
+            <File>
+              <FileName>OLED.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\OLED.h</FilePath>
+            </File>
+            <File>
+              <FileName>OLED_Font.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\OLED_Font.h</FilePath>
+            </File>
+            <File>
+              <FileName>EI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\EI.c</FilePath>
+            </File>
+            <File>
+              <FileName>EI.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\EI.h</FilePath>
             </File>
           </Files>
         </Group>
